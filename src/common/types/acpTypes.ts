@@ -343,7 +343,7 @@ export const ACP_BACKENDS_ALL: Record<AcpBackendAll, AcpBackendConfig> = {
   },
   gemini: {
     id: 'gemini',
-    name: 'Google CLI',
+    name: 'Workspace Assistant',
     cliCommand: 'gemini',
     authRequired: true,
     enabled: false,

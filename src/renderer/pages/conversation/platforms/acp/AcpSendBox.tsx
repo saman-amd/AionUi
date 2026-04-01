@@ -32,6 +32,7 @@ import { useOpenFileSelector } from '@/renderer/hooks/file/useOpenFileSelector';
 import ContextUsageIndicator from '@/renderer/components/agent/ContextUsageIndicator';
 import { useAutoTitle } from '@/renderer/hooks/chat/useAutoTitle';
 import AgentModeSelector from '@/renderer/components/agent/AgentModeSelector';
+import ThinkingToggle from '@/renderer/components/ThinkingToggle';
 import { useSlashCommands } from '@/renderer/hooks/chat/useSlashCommands';
 import { useAcpMessage } from './useAcpMessage';
 import { useAcpInitialMessage } from './useAcpInitialMessage';
@@ -301,17 +302,6 @@ Please check your local CLI tool authentication status`,
         tools={
           <div className='flex items-center gap-4px'>
             <FileAttachButton openFileSelector={openFileSelector} onLocalFilesAdded={handleFilesAdded} />
-            <AgentModeSelector
-              backend={backend}
-              conversationId={conversation_id}
-              compact
-              initialMode={sessionMode}
-              compactLeadingIcon={<Shield theme='outline' size='14' fill={iconColors.secondary} />}
-              modeLabelFormatter={(mode) => t(`agentMode.${mode.value}`, { defaultValue: mode.label })}
-              compactLabelPrefix={t('agentMode.permission')}
-              hideCompactLabelPrefixOnMobile
-            />
-            <AcpConfigSelector conversationId={conversation_id} backend={backend} />
           </div>
         }
         prefix={

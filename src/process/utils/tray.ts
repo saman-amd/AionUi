@@ -152,14 +152,7 @@ const buildTrayContextMenu = async (): Promise<Electron.Menu> => {
     },
   });
 
-  template.push({ type: 'separator' });
-  template.push({
-    label: i18n.t('common.tray.checkUpdate'),
-    click: () => {
-      showAndFocus();
-      mainWindowRef?.webContents.send('tray:check-update');
-    },
-  });
+  // [Local-Only] "Check for updates" removed — no internet access
   template.push({ type: 'separator' });
   template.push({
     label: i18n.t('common.tray.about'),
@@ -198,7 +191,7 @@ export const createOrUpdateTray = (): void => {
   try {
     const icon = getTrayIcon();
     tray = new Tray(icon);
-    tray.setToolTip('AionUi');
+    tray.setToolTip('Workspace Assistant');
     void buildTrayContextMenu().then((menu) => tray?.setContextMenu(menu));
 
     tray.on('double-click', () => {

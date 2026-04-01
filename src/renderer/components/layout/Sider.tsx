@@ -51,7 +51,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         console.error('Navigation failed:', error);
       });
     } else {
-      Promise.resolve(navigate('/settings/gemini')).catch((error) => {
+      Promise.resolve(navigate('/settings/model')).catch((error) => {
         console.error('Navigation failed:', error);
       });
     }
@@ -171,33 +171,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                         <span className='collapsed-hidden text-t-primary text-14px font-medium leading-22px'>
                           {t('conversation.welcome.newConversation')}
                         </span>
-                      </div>
-                    </Tooltip>
-                    <Tooltip
-                      {...siderTooltipProps}
-                      content={
-                        isBatchMode ? t('conversation.history.batchModeExit') : t('conversation.history.batchManage')
-                      }
-                      position='right'
-                    >
-                      <div
-                        className={classNames(
-                          'h-36px w-36px rd-0.5rem flex items-center justify-center cursor-pointer shrink-0 transition-all border border-solid border-transparent',
-                          isMobile && 'sider-action-icon-btn-mobile',
-                          {
-                            'hover:bg-fill-2 hover:border-[var(--color-border-2)]': !isBatchMode,
-                            'bg-[rgba(var(--primary-6),0.12)] border-[rgba(var(--primary-6),0.24)] text-primary':
-                              isBatchMode,
-                          }
-                        )}
-                        onClick={handleToggleBatchMode}
-                      >
-                        <ListCheckbox
-                          theme='outline'
-                          size='20'
-                          className='block leading-none shrink-0'
-                          style={{ lineHeight: 0 }}
-                        />
                       </div>
                     </Tooltip>
                   </div>

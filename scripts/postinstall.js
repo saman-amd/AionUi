@@ -36,6 +36,26 @@ function runPostInstall() {
     console.error('Postinstall failed:', e.message);
     // Don't exit with error code to avoid breaking installation
   }
+
+  // Apply OpenAI tool schema fix for local model compatibility
+  // aioncli-core reads func.parameters (empty) instead of func.parametersJsonSchema (has schema)
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const targetFile = path.join(__dirname, '..', 'node_modules', '@office-ai', 'aioncli-core', 'dist', 'src', 'core', 'openaiContentGenerator.js');
+    if (fs.existsSync(targetFile)) {
+      let content = fs.readFileSync(targetFile, 'utf-8');
+      const buggy = 'this.convertGeminiParametersToOpenAI((func.parameters || {}))';
+      const fixed = 'this.convertGeminiParametersToOpenAI((func.parametersJsonSchema || func.parameters || {}))';
+      if (content.includes(buggy) && !content.includes('parametersJsonSchema')) {
+        content = content.replace(buggy, fixed);
+        fs.writeFileSync(targetFile, content, 'utf-8');
+        console.log('[Postinstall] Applied OpenAI tool schema fix to aioncli-core');
+      }
+    }
+  } catch (e) {
+    console.warn('[Postinstall] Could not apply aioncli-core patch:', e.message);
+  }
 }
 
 // Only run if this script is executed directly

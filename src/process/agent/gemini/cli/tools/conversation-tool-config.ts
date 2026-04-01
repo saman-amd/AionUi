@@ -38,30 +38,11 @@ export class ConversationToolConfig {
    * 对话创建时决定工具配置（类似workspace确定机制）
    * @param authType 认证类型（平台类型）
    */
-  async initializeForConversation(authType: AuthType): Promise<void> {
-    // 所有模型都使用 aionui_web_fetch 替换内置的 web_fetch
-    this.useAionuiWebFetch = true;
-    this.excludeTools.push('web_fetch');
-
-    // 根据 webSearchEngine 配置决定启用哪个搜索工具
-    // gemini_web_search 只能在 Google OAuth 认证下使用，因为它需要创建 Google OAuth 客户端
-    // gemini_web_search can only be used with Google OAuth auth, as it requires creating a Google OAuth client
-    if (this.webSearchEngine === 'google') {
-      if (authType === AuthType.LOGIN_WITH_GOOGLE || authType === AuthType.USE_VERTEX_AI) {
-        // 只有 Google OAuth 认证才启用 gemini_web_search
-        // Only enable gemini_web_search for Google OAuth authentication
-        this.useGeminiWebSearch = true;
-        this.excludeTools.push('google_web_search'); // 排除内置的 Google 搜索
-      } else {
-        // 对于所有非 Google OAuth 的认证类型（USE_OPENAI, USE_GEMINI, USE_ANTHROPIC 等），
-        // 不启用 gemini_web_search，因为它会尝试创建独立的 Google OAuth 客户端，触发不必要的授权跳转
-        // For all non-Google OAuth auth types (USE_OPENAI, USE_GEMINI, USE_ANTHROPIC, etc.),
-        // don't enable gemini_web_search as it attempts to create a dedicated Google OAuth client
-        this.useGeminiWebSearch = false;
-      }
-    }
-    // webSearchEngine === 'default' 时不启用 Google 搜索工具（useGeminiWebSearch 保持默认 false）
-    // When webSearchEngine === 'default', don't enable Google search (useGeminiWebSearch stays false)
+  async initializeForConversation(_authType: AuthType): Promise<void> {
+    // [Local-Only] Web search and web fetch tools are disabled — they require internet access
+    this.useAionuiWebFetch = false;
+    this.useGeminiWebSearch = false;
+    this.excludeTools.push('web_fetch', 'google_web_search', 'gemini_web_search', 'aionui_web_fetch');
   }
 
   /**

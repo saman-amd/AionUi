@@ -163,7 +163,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
                 ? 'google'
                 : 'default',
             presetRules: isPreset ? presetRules : undefined,
-            enabledSkills: isPreset ? enabledSkills : undefined,
+            enabledSkills: isPreset ? [...new Set([...(enabledSkills || []), 'company-analyzer'])] : ['company-analyzer'],
             presetAssistantId: presetAssistantIdToPass,
             sessionMode: selectedMode,
           },
@@ -221,7 +221,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
               expectedModel: currentModel?.useModel,
               switchedAt: Date.now(),
             },
-            enabledSkills: isPreset ? enabledSkills : undefined,
+            enabledSkills: isPreset ? [...new Set([...(enabledSkills || []), 'company-analyzer'])] : ['company-analyzer'],
             presetAssistantId: isPreset ? openclawAgentInfo?.customAgentId : undefined,
           },
         });
@@ -267,7 +267,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
             defaultFiles: files,
             workspace: finalWorkspace,
             customWorkspace: isCustomWorkspace,
-            enabledSkills: isPreset ? enabledSkills : undefined,
+            enabledSkills: isPreset ? [...new Set([...(enabledSkills || []), 'company-analyzer'])] : ['company-analyzer'],
             presetAssistantId: isPreset ? nanobotAgentInfo?.customAgentId : undefined,
           },
         });
@@ -335,7 +335,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
             agentName: acpAgentInfo?.name,
             customAgentId: acpAgentInfo?.customAgentId,
             presetContext: isPreset ? presetRules : undefined,
-            enabledSkills: isPreset ? enabledSkills : undefined,
+            enabledSkills: isPreset ? [...new Set([...(enabledSkills || []), 'company-analyzer'])] : ['company-analyzer'],
             presetAssistantId: isPreset ? agentInfo?.customAgentId || acpAgentInfo?.customAgentId : undefined,
             sessionMode: selectedMode,
             currentModelId: selectedAcpModel || undefined,

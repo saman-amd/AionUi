@@ -1,0 +1,14 @@
+diff --git a/node_modules/@office-ai/aioncli-core/dist/src/core/openaiContentGenerator.js b/node_modules/@office-ai/aioncli-core/dist/src/core/openaiContentGenerator.js
+index 1234567..abcdefg 100644
+--- a/node_modules/@office-ai/aioncli-core/dist/src/core/openaiContentGenerator.js
++++ b/node_modules/@office-ai/aioncli-core/dist/src/core/openaiContentGenerator.js
+@@ -693,7 +693,7 @@
+                         openAITools.push({
+                             type: 'function',
+                             function: {
+                                 name: func.name,
+                                 description: func.description,
+-                                parameters: this.convertGeminiParametersToOpenAI((func.parameters || {})),
++                                parameters: this.convertGeminiParametersToOpenAI((func.parametersJsonSchema || func.parameters || {})),
+                             },
+                         });

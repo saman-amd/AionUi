@@ -47,11 +47,8 @@ export class ChannelManager {
 
   private constructor() {
     // Private constructor for singleton pattern
-    // Register built-in plugins
-    registerPlugin('telegram', TelegramPlugin);
-    registerPlugin('lark', LarkPlugin);
-    registerPlugin('dingtalk', DingTalkPlugin);
-    registerPlugin('weixin', WeixinPlugin);
+    // [Local-Only] Built-in channel plugins (Telegram, Lark, DingTalk, Weixin) disabled — they require internet
+    console.log('[ChannelManager] Channel plugins disabled (local-only mode)');
   }
 
   /**

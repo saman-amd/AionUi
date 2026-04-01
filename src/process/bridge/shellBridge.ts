@@ -25,12 +25,16 @@ export function initShellBridge(): void {
   });
 
   ipcBridge.shell.openExternal.provider((url) => {
+    // [Local-Only] Only allow file:// URLs — block all http/https external links
     try {
-      new URL(url);
+      const parsed = new URL(url);
+      if (parsed.protocol === 'file:') {
+        return shell.openExternal(url);
+      }
     } catch {
-      console.warn(`[shellBridge] Invalid URL passed to openExternal: ${url}`);
-      return Promise.resolve();
+      // Invalid URL — block
     }
-    return shell.openExternal(url);
+    console.warn(`[Local-Only] Blocked shell.openExternal: ${url}`);
+    return Promise.resolve();
   });
 }

@@ -1,6 +1,6 @@
 appId: com.aionui.app
-productName: AionUi
-executableName: AionUi
+productName: Workspace Assistant
+executableName: WorkspaceAssistant
 copyright: Copyright © 2024 AionUi
 
 protocols:
@@ -217,9 +217,10 @@ removePackageScripts: true
 electronDownload:
   cache: ${env.ELECTRON_CACHE}
 
-publish:
-  provider: github
-  owner: iOfficeAI
-  repo: AionUi
-  publishAutoUpdate: true
-  releaseType: release
+# [Local-Only] Auto-update publishing disabled — no internet access
+# publish:
+#   provider: github
+#   owner: iOfficeAI
+#   repo: AionUi
+#   publishAutoUpdate: true
+#   releaseType: release

@@ -14,7 +14,7 @@ Sentry.init({
 });
 
 import './process/utils/configureConsoleLog';
-import { app, BrowserWindow, nativeImage, net, powerMonitor, protocol, screen } from 'electron';
+import { app, BrowserWindow, nativeImage, net, powerMonitor, protocol, screen, session } from 'electron';
 import fixPath from 'fix-path';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -260,6 +260,23 @@ const createWindow = (): void => {
   // Fallback: show window after 5s even if events don't fire (e.g. loadURL failure)
   setTimeout(showWindow, 5000);
 
+  // ---- Local-Only: Block external navigation ----
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!isLocalUrl(url)) {
+      console.warn(`[Local-Only] Blocked navigation to: ${url}`);
+      event.preventDefault();
+    }
+  });
+
+  // ---- Local-Only: Block new-window creation to external URLs ----
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (!isLocalUrl(url)) {
+      console.warn(`[Local-Only] Blocked new window to: ${url}`);
+      return { action: 'deny' };
+    }
+    return { action: 'allow' };
+  });
+
   initMainAdapterWithWindow(mainWindow);
   bindMainWindowReferences(mainWindow);
   setupApplicationMenu();
@@ -267,29 +284,8 @@ const createWindow = (): void => {
   void applyZoomToWindow(mainWindow);
   registerWindowMaximizeListeners(mainWindow);
 
-  // Initialize auto-updater service (skip when disabled via env, e.g. E2E / CI)
-  // 初始化自动更新服务（通过环境变量禁用时跳过，例如 E2E / CI 场景）
-  const isCiRuntime = process.env.CI === 'true' || process.env.CI === '1' || process.env.GITHUB_ACTIONS === 'true';
-  const disableAutoUpdater =
-    process.env.AIONUI_DISABLE_AUTO_UPDATE === '1' || process.env.AIONUI_E2E_TEST === '1' || isCiRuntime;
-  if (!disableAutoUpdater) {
-    Promise.all([import('./process/services/autoUpdaterService'), import('./process/bridge/updateBridge')])
-      .then(([{ autoUpdaterService }, { createAutoUpdateStatusBroadcast }]) => {
-        // Create status broadcast callback that emits via ipcBridge (pure emitter, no window binding)
-        const statusBroadcast = createAutoUpdateStatusBroadcast();
-        autoUpdaterService.initialize(statusBroadcast);
-        // Check for updates after 3 seconds delay
-        // 3秒后检查更新
-        setTimeout(() => {
-          void autoUpdaterService.checkForUpdatesAndNotify();
-        }, 3000);
-      })
-      .catch((error) => {
-        console.error('[App] Failed to initialize autoUpdaterService:', error);
-      });
-  } else {
-    console.log('[AionUi] Auto-updater disabled via env/CI guard');
-  }
+  // [Local-Only] Auto-updater permanently disabled — no internet access
+  console.log('[AionUi] Auto-updater disabled (local-only mode)');
 
   // Load the renderer: dev server URL in development, built HTML file in production
   const rendererUrl = process.env['ELECTRON_RENDERER_URL'];
@@ -366,10 +362,55 @@ const createWindow = (): void => {
   });
 };
 
+// ============ Local-Only Mode: Network Blocking ============
+// Block ALL outbound network requests except localhost/loopback.
+// This ensures the app never reaches the internet.
+
+const LOCALHOST_HOSTS = new Set(['127.0.0.1', 'localhost', '0.0.0.0', '::1', '[::1]']);
+const ALLOWED_PROTOCOLS = new Set(['file:', 'aion-asset:', 'devtools:', 'chrome-extension:', 'data:', 'blob:']);
+
+const isLocalUrl = (rawUrl: string): boolean => {
+  // Allow non-network protocols
+  for (const proto of ALLOWED_PROTOCOLS) {
+    if (rawUrl.startsWith(proto)) return true;
+  }
+  try {
+    const url = new URL(rawUrl);
+    if (ALLOWED_PROTOCOLS.has(url.protocol)) return true;
+    return LOCALHOST_HOSTS.has(url.hostname);
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Wrap the main-process global fetch to block non-localhost requests.
+ * This catches outbound calls from updateBridge, McpOAuthService, modelBridge, etc.
+ */
+const originalFetch = globalThis.fetch;
+globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  if (!isLocalUrl(url)) {
+    console.warn(`[Local-Only] Blocked main-process fetch to: ${url}`);
+    throw new Error(`[Local-Only] Network request blocked: ${url}. This app is configured for local-only operation.`);
+  }
+  return originalFetch(input, init);
+}) as typeof globalThis.fetch;
+
 const handleAppReady = async (): Promise<void> => {
   const t0 = performance.now();
   const mark = (label: string) => console.log(`[AionUi:ready] ${label} +${Math.round(performance.now() - t0)}ms`);
   mark('start');
+
+  // ---- Local-Only: Block all non-localhost requests from renderer ----
+  session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
+    if (isLocalUrl(details.url)) {
+      callback({ cancel: false });
+    } else {
+      console.warn(`[Local-Only] Blocked renderer request to: ${details.url}`);
+      callback({ cancel: true });
+    }
+  });
 
   // CLI mode: print app version and exit immediately (used by CI smoke tests)
   if (isVersionMode) {

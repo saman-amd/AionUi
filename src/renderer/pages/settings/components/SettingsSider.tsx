@@ -25,14 +25,8 @@ import { getSiderTooltipProps } from '@/renderer/utils/ui/siderTooltip';
 
 /** Builtin settings tab IDs in display order (must match router paths). */
 export const BUILTIN_TAB_IDS = [
-  'gemini',
-  'agent',
   'model',
-  'assistants',
-  'skills-hub',
-  'tools',
   'display',
-  'webui',
   'system',
   'about',
 ] as const;

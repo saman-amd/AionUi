@@ -380,6 +380,25 @@ export class GeminiAgent {
     // overriding our filtering in loadCliConfig, so we need to re-apply enabledSkills filter here
     if (this.enabledSkills && this.enabledSkills.length > 0) {
       const enabledSet = new Set(this.enabledSkills);
+      // aioncli-core's SkillManager.discoverSkills() (called by config.initialize()) loads skills
+      // from its own directories which may be empty. Re-load from AionUI's skills directory
+      // and add them to the SkillManager so activate_skill can find them.
+      if (this.skillsDir) {
+        const { loadSkillsFromDir } = await import('@office-ai/aioncli-core');
+        const topLevelSkills = await loadSkillsFromDir(this.skillsDir);
+        const builtinDir = this.skillsDir + '/_builtin';
+        let builtinDirSkills: typeof topLevelSkills = [];
+        try {
+          builtinDirSkills = await loadSkillsFromDir(builtinDir);
+        } catch {
+          // Ignore if _builtin doesn't exist
+        }
+        const allLoadedSkills = [...topLevelSkills, ...builtinDirSkills].filter((s) => enabledSet.has(s.name));
+        if (allLoadedSkills.length > 0) {
+          this.config.getSkillManager().addSkills(allLoadedSkills);
+          console.log(`[GeminiAgent] Injected ${allLoadedSkills.length} skills into SkillManager: ${allLoadedSkills.map((s) => s.name).join(', ')}`);
+        }
+      }
       this.config.getSkillManager().filterSkills((skill) => enabledSet.has(skill.name));
       console.log(`[GeminiAgent] Filtered skills after initialize: ${this.enabledSkills.join(', ')}`);
     } else {

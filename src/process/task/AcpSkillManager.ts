@@ -148,6 +148,9 @@ export class AcpSkillManager {
    */
   async discoverAutoSkills(): Promise<void> {
     if (this.autoInitialized) return;
+    // [Local-Only] Builtin auto-skills disabled — only company-analyzer is used
+    this.autoInitialized = true;
+    return;
 
     const builtinDir = this.autoSkillsDir;
     if (!existsSync(builtinDir)) {

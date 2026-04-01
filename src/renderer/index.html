@@ -3,16 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="application-name" content="AionUi" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' aion-asset:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:* ws://localhost:* http://localhost:*; img-src 'self' data: aion-asset:; font-src 'self' data:; media-src 'self' aion-asset:; worker-src 'self' blob:;" />
+    <meta name="application-name" content="Workspace Assistant" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="AionUi" />
+    <meta name="apple-mobile-web-app-title" content="Workspace Assistant" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="theme-color" content="#4E5969" />
     <link rel="icon" type="image/png" href="./pwa/icon-192.png" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./pwa/icon-180.png" />
-    <title>AionUi</title>
+    <title>Workspace Assistant</title>
     <script>
       // Synchronously restore theme from localStorage to prevent theme flash
       (function () {

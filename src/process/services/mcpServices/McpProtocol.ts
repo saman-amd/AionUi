@@ -167,12 +167,15 @@ export abstract class AbstractMcpAgent implements IMcpProtocol {
       switch (transport.type) {
         case 'stdio':
           return this.testStdioConnection(transport);
+        // [Local-Only] HTTP/SSE transports disabled — they require internet access
         case 'sse':
-          return this.testSseConnection(transport);
         case 'http':
-          return this.testHttpConnection(transport);
         case 'streamable_http':
-          return this.testStreamableHttpConnection(transport);
+          return Promise.resolve({
+            success: false,
+            error:
+              '[Local-Only] Remote MCP transports (SSE, HTTP) are disabled. Only stdio (local process) connections are allowed.',
+          });
         default:
           return Promise.resolve({
             success: false,

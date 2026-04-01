@@ -182,7 +182,7 @@ export class GeminiAgentManager extends BaseAgentManager<
         const skillManager = AcpSkillManager.getInstance(this.enabledSkills);
         await skillManager.discoverSkills(this.enabledSkills);
         const builtinSkillNames = skillManager.getBuiltinSkillsIndex().map((s) => s.name);
-        const allEnabledSkills = [...new Set([...builtinSkillNames, ...(this.enabledSkills || [])])];
+        const allEnabledSkills = [...new Set([...builtinSkillNames, ...(this.enabledSkills || []), 'company-analyzer'])];
 
         // Determine yoloMode from legacy config (SecurityModalContent)
         const legacyYoloMode = this.forceYoloMode ?? config?.yoloMode ?? false;

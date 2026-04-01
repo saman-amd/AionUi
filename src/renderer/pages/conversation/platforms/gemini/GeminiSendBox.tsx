@@ -31,6 +31,7 @@ import { Message, Tag } from '@arco-design/web-react';
 import { Shield } from '@icon-park/react';
 import { iconColors } from '@/renderer/styles/colors';
 import AgentModeSelector from '@/renderer/components/agent/AgentModeSelector';
+import ThinkingToggle, { isThinkingEnabled, supportsThinkingControl } from '@/renderer/components/ThinkingToggle';
 import ThoughtDisplay from '@/renderer/components/chat/ThoughtDisplay';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -238,8 +239,12 @@ const GeminiSendBox: React.FC<{
 
       try {
         void checkAndUpdateTitle(conversation_id, input);
+        // Prepend /no_think only for models that support thinking control (e.g. Qwen3 thinking, DeepSeek R1)
+        const modelSupportsThinking = supportsThinkingControl(currentModel?.useModel);
+        const finalInput =
+          modelSupportsThinking && !isThinkingEnabled() ? `/no_think\n${displayMessage}` : displayMessage;
         const result = await ipcBridge.geminiConversation.sendMessage.invoke({
-          input: displayMessage,
+          input: finalInput,
           msg_id,
           conversation_id,
           files,
@@ -384,15 +389,6 @@ const GeminiSendBox: React.FC<{
         tools={
           <div className='flex items-center gap-4px'>
             <FileAttachButton openFileSelector={openFileSelector} onLocalFilesAdded={handleFilesAdded} />
-            <AgentModeSelector
-              backend='gemini'
-              conversationId={conversation_id}
-              compact
-              compactLeadingIcon={<Shield theme='outline' size='14' fill={iconColors.secondary} />}
-              modeLabelFormatter={(mode) => t(`agentMode.${mode.value}`, { defaultValue: mode.label })}
-              compactLabelPrefix={t('agentMode.permission')}
-              hideCompactLabelPrefixOnMobile
-            />
           </div>
         }
         sendButtonPrefix={
