@@ -12,7 +12,7 @@ import { Input, Tooltip } from '@arco-design/web-react';
 import { IconClose } from '@arco-design/web-react/icon';
 import { FolderOpen } from '@icon-park/react';
 import { iconColors } from '@/renderer/styles/colors';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import styles from '../index.module.css';
 
@@ -79,6 +79,17 @@ const GuidInputCard: React.FC<GuidInputCardProps> = ({
   const { t } = useTranslation();
   const { compositionHandlers, isComposing } = useCompositionInput();
   const textareaAutoSize = isMobile ? { minRows: 2, maxRows: 8 } : { minRows: 3, maxRows: 20 };
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Auto-focus textarea on mount (desktop only)
+  useEffect(() => {
+    if (isMobile) return;
+    const timer = setTimeout(() => {
+      const textarea = cardRef.current?.querySelector('textarea');
+      textarea?.focus();
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [isMobile]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (isComposing.current) return;
@@ -87,6 +98,7 @@ const GuidInputCard: React.FC<GuidInputCardProps> = ({
 
   return (
     <div
+      ref={cardRef}
       className={`${styles.guidInputCard} guid-input-card-shell relative p-16px ${dir ? 'pb-8px' : ''} border-3 b bg-dialog-fill-0 b-solid rd-20px flex flex-col ${mentionOpen ? 'overflow-visible' : 'overflow-hidden'} transition-all duration-200 ${isFileDragging ? 'border-dashed guid-input-card-shell--dragging' : ''}`}
       style={{
         zIndex: 1,

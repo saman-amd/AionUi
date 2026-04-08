@@ -379,17 +379,15 @@ export const useGuidAgentSelection = ({
           }
         }
 
-        // 2. Fallback: legacy yoloMode
-        if (yoloMode) {
-          const yoloValues: Record<string, string> = {
-            claude: 'bypassPermissions',
-            gemini: 'yolo',
-            codex: 'yolo',
-            iflow: 'yolo',
-            qwen: 'yolo',
-          };
-          _setSelectedMode(yoloValues[configKey] || 'yolo');
-        }
+        // 2. Fallback: legacy yoloMode or default to YOLO
+        const yoloValues: Record<string, string> = {
+          claude: 'bypassPermissions',
+          gemini: 'yolo',
+          codex: 'yolo',
+          iflow: 'yolo',
+          qwen: 'yolo',
+        };
+        _setSelectedMode(yoloValues[configKey] || 'yolo');
       } catch {
         /* silent */
       }
