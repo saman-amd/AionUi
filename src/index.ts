@@ -367,17 +367,12 @@ const createWindow = (): void => {
 // This ensures the app never reaches the internet.
 
 const LOCALHOST_HOSTS = new Set(['127.0.0.1', 'localhost', '0.0.0.0', '::1', '[::1]']);
-const ALLOWED_PROTOCOLS = new Set(['file:', 'aion-asset:', 'devtools:', 'chrome-extension:', 'data:', 'blob:']);
 
 const isLocalUrl = (rawUrl: string): boolean => {
-  // Allow non-network protocols
-  for (const proto of ALLOWED_PROTOCOLS) {
-    if (rawUrl.startsWith(proto)) return true;
-  }
+  // Fast path: non-http(s) protocols are always local (file:, data:, blob:, devtools:, aion-asset:, etc.)
+  if (!rawUrl.startsWith('http:') && !rawUrl.startsWith('https:')) return true;
   try {
-    const url = new URL(rawUrl);
-    if (ALLOWED_PROTOCOLS.has(url.protocol)) return true;
-    return LOCALHOST_HOSTS.has(url.hostname);
+    return LOCALHOST_HOSTS.has(new URL(rawUrl).hostname);
   } catch {
     return false;
   }
@@ -402,15 +397,20 @@ const handleAppReady = async (): Promise<void> => {
   const mark = (label: string) => console.log(`[AionUi:ready] ${label} +${Math.round(performance.now() - t0)}ms`);
   mark('start');
 
-  // ---- Local-Only: Block all non-localhost requests from renderer ----
-  session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
-    if (isLocalUrl(details.url)) {
-      callback({ cancel: false });
-    } else {
-      console.warn(`[Local-Only] Blocked renderer request to: ${details.url}`);
-      callback({ cancel: true });
-    }
-  });
+  // ---- Local-Only: Block non-localhost http(s) requests from renderer ----
+  // Use Electron's native URL filter so only http(s) requests trigger the callback.
+  // All other protocols (file:, data:, blob:, devtools:, aion-asset:) bypass this entirely.
+  session.defaultSession.webRequest.onBeforeRequest(
+    { urls: ['http://*/*', 'https://*/*'] },
+    (details, callback) => {
+      if (LOCALHOST_HOSTS.has(new URL(details.url).hostname)) {
+        callback({ cancel: false });
+      } else {
+        console.warn(`[Local-Only] Blocked renderer request to: ${details.url}`);
+        callback({ cancel: true });
+      }
+    },
+  );
 
   // CLI mode: print app version and exit immediately (used by CI smoke tests)
   if (isVersionMode) {
