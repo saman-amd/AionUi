@@ -96,6 +96,8 @@ interface GeminiAgent2Options {
   contextContent?: string; // 向后兼容 / Backward compatible
   /** 内置 skills 目录路径，使用 aioncli-core SkillManager 加载 / Builtin skills directory path, loaded by aioncli-core SkillManager */
   skillsDir?: string;
+  /** Bundled skills（config/builtin-skills/）/ Bundled skills directory path (config/builtin-skills/) */
+  builtinSkillsCopyDir?: string;
   /** 启用的 skills 列表，用于过滤 SkillManager 中的 skills / Enabled skills list for filtering skills in SkillManager */
   enabledSkills?: string[];
 }
@@ -128,6 +130,8 @@ export class GeminiAgent {
   private contextFileName: string | undefined;
   /** 内置 skills 目录路径 / Builtin skills directory path */
   private skillsDir?: string;
+  /** Bundled skills（config/builtin-skills/）/ Bundled skills directory path */
+  private builtinSkillsCopyDir?: string;
   /** 启用的 skills 列表 / Enabled skills list */
   private enabledSkills?: string[];
   bootstrap: Promise<void>;
@@ -148,6 +152,7 @@ export class GeminiAgent {
     this.onStreamEvent = options.onStreamEvent;
     this.presetRules = options.presetRules;
     this.skillsDir = options.skillsDir;
+    this.builtinSkillsCopyDir = options.builtinSkillsCopyDir;
     this.enabledSkills = options.enabledSkills;
     // 向后兼容：优先使用 presetRules，其次 contextContent / Backward compatible: prefer presetRules, fallback to contextContent
     this.contextContent = options.contextContent || options.presetRules;
@@ -370,6 +375,7 @@ export class GeminiAgent {
       yoloMode,
       mcpServers: this.mcpServers,
       skillsDir: this.skillsDir,
+      builtinSkillsCopyDir: this.builtinSkillsCopyDir,
       enabledSkills: this.enabledSkills,
     });
     await this.config.initialize();
@@ -380,23 +386,39 @@ export class GeminiAgent {
     // overriding our filtering in loadCliConfig, so we need to re-apply enabledSkills filter here
     if (this.enabledSkills && this.enabledSkills.length > 0) {
       const enabledSet = new Set(this.enabledSkills);
-      // aioncli-core's SkillManager.discoverSkills() (called by config.initialize()) loads skills
-      // from its own directories which may be empty. Re-load from AionUI's skills directory
-      // and add them to the SkillManager so activate_skill can find them.
+      // Re-load skills from AionUI's directories and add them to SkillManager so activate_skill can find them.
+      // We scan both: user custom (skillsDir + _builtin/) and bundled (builtinSkillsCopyDir)
+      const dirsToLoad: Array<{ dir: string; scanBuiltin: boolean }> = [];
       if (this.skillsDir) {
+        dirsToLoad.push({ dir: this.skillsDir, scanBuiltin: true });
+      }
+      if (this.builtinSkillsCopyDir) {
+        // Scan both top-level (e.g. company-analyzer) and _builtin/ (e.g. cron) within config/builtin-skills/
+        dirsToLoad.push({ dir: this.builtinSkillsCopyDir, scanBuiltin: true });
+      }
+      if (dirsToLoad.length > 0) {
         const { loadSkillsFromDir } = await import('@office-ai/aioncli-core');
-        const topLevelSkills = await loadSkillsFromDir(this.skillsDir);
-        const builtinDir = this.skillsDir + '/_builtin';
-        let builtinDirSkills: typeof topLevelSkills = [];
-        try {
-          builtinDirSkills = await loadSkillsFromDir(builtinDir);
-        } catch {
-          // Ignore if _builtin doesn't exist
+        const allLoadedSkills: Awaited<ReturnType<typeof loadSkillsFromDir>> = [];
+        for (const { dir, scanBuiltin } of dirsToLoad) {
+          try {
+            const topLevel = await loadSkillsFromDir(dir);
+            allLoadedSkills.push(...topLevel);
+          } catch {
+            // Ignore missing directories
+          }
+          if (scanBuiltin) {
+            try {
+              const builtinSubSkills = await loadSkillsFromDir(dir + '/_builtin');
+              allLoadedSkills.push(...builtinSubSkills);
+            } catch {
+              // Ignore if _builtin doesn't exist
+            }
+          }
         }
-        const allLoadedSkills = [...topLevelSkills, ...builtinDirSkills].filter((s) => enabledSet.has(s.name));
-        if (allLoadedSkills.length > 0) {
-          this.config.getSkillManager().addSkills(allLoadedSkills);
-          console.log(`[GeminiAgent] Injected ${allLoadedSkills.length} skills into SkillManager: ${allLoadedSkills.map((s) => s.name).join(', ')}`);
+        const filtered = allLoadedSkills.filter((s) => enabledSet.has(s.name));
+        if (filtered.length > 0) {
+          this.config.getSkillManager().addSkills(filtered);
+          console.log(`[GeminiAgent] Injected ${filtered.length} skills into SkillManager: ${filtered.map((s) => s.name).join(', ')}`);
         }
       }
       this.config.getSkillManager().filterSkills((skill) => enabledSet.has(skill.name));
