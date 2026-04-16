@@ -10,9 +10,9 @@ import type { CronMessageMeta, IMessageText, IMessageToolGroup, TMessage } from 
 import { transformMessage } from '@/common/chat/chatLib';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import type { IMcpServer, TProviderWithModel } from '@/common/config/storage';
-import { ProcessConfig, getSkillsDir } from '@process/utils/initStorage';
+import { ProcessConfig, getSkillsDir, getBuiltinSkillsCopyDir } from '@process/utils/initStorage';
 import { ExtensionRegistry } from '@process/extensions';
-import { buildSystemInstructionsWithSkillsIndex } from './agentUtils';
+import { prepareFirstMessageWithSkillsIndex } from './agentUtils';
 import { detectSkillLoadRequest, AcpSkillManager, buildSkillContentText } from './AcpSkillManager';
 import { uuid } from '@/common/utils';
 import { getProviderAuthType } from '@/common/utils/platformAuthType';
@@ -55,6 +55,8 @@ export class GeminiAgentManager extends BaseAgentManager<
     GOOGLE_CLOUD_PROJECT?: string;
     /** 内置 skills 目录路径 / Builtin skills directory path */
     skillsDir?: string;
+    /** Bundled skills（config/builtin-skills/）/ Bundled skills directory path */
+    builtinSkillsCopyDir?: string;
     /** 启用的 skills 列表 / Enabled skills list */
     enabledSkills?: string[];
     /** Yolo mode: auto-approve all tool calls / 自动允许模式 */
@@ -72,6 +74,9 @@ export class GeminiAgentManager extends BaseAgentManager<
 
   /** Fingerprint of MCP config used by the current worker, for change detection */
   private mcpFingerprint: string = '';
+
+  /** True until the first user message is sent — skills index is injected on first send */
+  private isFirstMessage = true;
 
   /** Session-level approval store for "always allow" memory */
   readonly approvalStore = new GeminiApprovalStore();
@@ -207,6 +212,8 @@ export class GeminiAgentManager extends BaseAgentManager<
           presetRules: this.presetRules,
           contextContent: this.contextContent,
           skillsDir: getSkillsDir(),
+          // Bundled skills dir (config/builtin-skills/) so worker can find company-analyzer and other bundled skills
+          builtinSkillsCopyDir: getBuiltinSkillsCopyDir(),
           // 启用的 skills 列表（含内置 skills），用于 worker 的 SkillManager
           // Enabled skills list (including builtins) for worker's SkillManager
           enabledSkills: allEnabledSkills,
@@ -351,6 +358,17 @@ export class GeminiAgentManager extends BaseAgentManager<
       ipcBridge.geminiConversation.responseStream.emit(userResponseMessage);
     }
 
+    // Inject skills index into the first user message so the model knows which
+    // skills are available and where to read their SKILL.md files.
+    // Skip for cron messages — they are internal automated messages, not user turns.
+    let inputToSend = data.input;
+    if (this.isFirstMessage && !data.cronMeta && this.enabledSkills && this.enabledSkills.length > 0) {
+      inputToSend = await prepareFirstMessageWithSkillsIndex(data.input, {
+        enabledSkills: this.enabledSkills,
+      });
+      this.isFirstMessage = false;
+    }
+
     // Check if MCP config has changed since worker was initialized
     // If changed, kill old worker and re-bootstrap with fresh config
     // 检查 MCP 配置是否在 worker 初始化后发生变更
@@ -373,7 +391,7 @@ export class GeminiAgentManager extends BaseAgentManager<
           });
         });
       })
-      .then(() => super.sendMessage(data))
+      .then(() => super.sendMessage({ ...data, input: inputToSend }))
       .finally(() => {
         cronBusyGuard.setProcessing(this.conversation_id, false);
       });
