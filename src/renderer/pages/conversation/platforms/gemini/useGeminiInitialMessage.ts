@@ -44,8 +44,10 @@ export const useGeminiInitialMessage = ({
 
     if (!storedMessage) return;
 
-    // If no auth, store message in input box and trigger auto-detection from this new message point
-    if (hasNoAuth) {
+    // If no auth AND no model, store message in input box and trigger auto-detection.
+    // Guard: only enter this branch when currentModelId is also absent, to avoid a race
+    // where SWR hasn't loaded the provider list yet (hasNoAuth is transiently true).
+    if (hasNoAuth && !currentModelId) {
       try {
         const { input } = JSON.parse(storedMessage) as { input: string };
         setContent(input);
@@ -110,5 +112,5 @@ export const useGeminiInitialMessage = ({
     };
 
     void sendInitialMessage();
-  }, [conversationId, currentModelId]);
+  }, [conversationId, currentModelId, hasNoAuth]);
 };
