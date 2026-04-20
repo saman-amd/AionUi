@@ -76,6 +76,8 @@ export interface LoadCliConfigOptions {
   mcpServers?: Record<string, unknown>;
   /** 内置 skills 目录路径 / Builtin skills directory path */
   skillsDir?: string;
+  /** Bundled skills（config/builtin-skills/）/ Bundled skills directory path */
+  builtinSkillsCopyDir?: string;
   /** 启用的 skills 列表，用于过滤加载的 skills / Enabled skills list for filtering loaded skills */
   enabledSkills?: string[];
 }
@@ -91,6 +93,7 @@ export async function loadCliConfig({
   yoloMode,
   mcpServers,
   skillsDir,
+  builtinSkillsCopyDir,
   enabledSkills,
 }: LoadCliConfigOptions): Promise<Config> {
   const argv: Partial<CliArgs> = {
@@ -117,31 +120,43 @@ export async function loadCliConfig({
   // 仅在指定 enabledSkills 时加载，非 preset agent 不加载任何可选 skills
   // Only load when enabledSkills is specified; non-preset agents get no optional skills
   let builtinSkills: SkillDefinition[] = [];
-  if (skillsDir && enabledSkills && enabledSkills.length > 0) {
-    try {
-      // Load skills from both top-level and _builtin/ subdirectory
-      // loadSkillsFromDir only scans direct children, so _builtin/cron is not found by default
-      const topLevelSkills = await loadSkillsFromDir(skillsDir);
-      const builtinDir = path.join(skillsDir, '_builtin');
-      let builtinDirSkills: SkillDefinition[] = [];
-      try {
-        builtinDirSkills = await loadSkillsFromDir(builtinDir);
-      } catch (e) {
-        // Only ignore "not found" errors; warn on unexpected failures
-        if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
-          console.warn(`[Config] Failed to load skills from ${builtinDir}:`, e);
-        }
-      }
-      const allSkills = [...topLevelSkills, ...builtinDirSkills];
-      const enabledSet = new Set(enabledSkills);
-      const originalCount = allSkills.length;
-      builtinSkills = allSkills.filter((skill) => enabledSet.has(skill.name));
-      console.log(
-        `[Config] Filtered skills: ${builtinSkills.length}/${originalCount} enabled (${enabledSkills.join(', ')})`
-      );
-    } catch (error) {
-      console.warn(`[Config] Failed to load builtin skills from ${skillsDir}:`, error);
+  if (enabledSkills && enabledSkills.length > 0) {
+    const enabledSet = new Set(enabledSkills);
+    const dirsToScan: Array<{ dir: string; scanBuiltin: boolean }> = [];
+    if (skillsDir) {
+      // User custom skills: top-level and _builtin/ subdirectory
+      dirsToScan.push({ dir: skillsDir, scanBuiltin: true });
     }
+    if (builtinSkillsCopyDir) {
+      // Bundled skills (config/builtin-skills/): scan top-level AND _builtin/ subdirectory
+      // _builtin/ contains auto-enabled skills (e.g. cron); top-level has bundled skills (e.g. company-analyzer)
+      dirsToScan.push({ dir: builtinSkillsCopyDir, scanBuiltin: true });
+    }
+    const allSkills: SkillDefinition[] = [];
+    for (const { dir, scanBuiltin } of dirsToScan) {
+      try {
+        const topLevel = await loadSkillsFromDir(dir);
+        allSkills.push(...topLevel);
+        if (scanBuiltin) {
+          const builtinSubdir = path.join(dir, '_builtin');
+          try {
+            const builtinDirSkills = await loadSkillsFromDir(builtinSubdir);
+            allSkills.push(...builtinDirSkills);
+          } catch (e) {
+            if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+              console.warn(`[Config] Failed to load skills from ${builtinSubdir}:`, e);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn(`[Config] Failed to load skills from ${dir}:`, error);
+      }
+    }
+    const originalCount = allSkills.length;
+    builtinSkills = allSkills.filter((skill) => enabledSet.has(skill.name));
+    console.log(
+      `[Config] Filtered skills: ${builtinSkills.length}/${originalCount} enabled (${enabledSkills.join(', ')})`
+    );
   }
 
   // 创建虚拟 extension 来承载内置 skills
