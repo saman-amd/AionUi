@@ -509,12 +509,10 @@ const handleAppReady = async (): Promise<void> => {
     createWindow();
     mark('createWindow');
 
-    // Run ACP detection in parallel with renderer loading.
-    // By the time React mounts and calls getAvailableAgents (~300ms+),
-    // detection (~700ms) is usually already done.
-    initializeAcpDetector()
-      .then(() => mark('initializeAcpDetector'))
-      .catch((error) => console.error('[ACP] Detection failed:', error));
+    // [Local-Only] ACP agent detection skipped — only the built-in agent is used.
+    // This saves ~3-4 seconds of scanning for CLI agents (Claude Code, Codex, etc.)
+    console.log('[ACP] Agent detection skipped (local-only mode)');
+    mark('initializeAcpDetector (skipped)');
 
     // 读取语言设置并初始化主进程 i18n，然后刷新托盘菜单
     // Read language setting and initialize main process i18n, then refresh tray menu
